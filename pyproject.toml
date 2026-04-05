@@ -1,0 +1,16 @@
+[project]
+name = "coj-env"
+version = "0.1.0"
+description = "Cloud Ops Janitor OpenEnv Environment"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "openenv-core>=0.2.0"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.openenv]
+entrypoint = "server.app:app"

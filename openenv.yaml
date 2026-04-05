@@ -1,0 +1,20 @@
+name: cloud-ops-janitor
+version: 1.0.0
+description: >
+  A reinforcement learning environment for optimizing cloud infrastructure
+  by removing unused resources while maintaining system health.
+
+entrypoint: app:app
+
+tasks:
+  - name: zombie_reaper
+    description: Delete all unattached volumes older than 30 days
+    reward_range: [0.0, 1.0]
+
+  - name: dev_shutdown
+    description: Stop all low-CPU dev instances without affecting production
+    reward_range: [0.0, 1.0]
+
+  - name: auditor
+    description: Secure public database and optimize cost without breaking system
+    reward_range: [0.0, 1.0]
