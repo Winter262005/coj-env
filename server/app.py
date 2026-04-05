@@ -25,6 +25,11 @@ def step(action: dict):
 def state():
     return env.get_state()
 
+
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 import uvicorn
 
 def main():
