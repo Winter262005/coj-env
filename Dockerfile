@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir \
 EXPOSE 8000
 
 # Start server using your main()
-CMD ["python", "-m", "server.app"]
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
