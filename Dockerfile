@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir \
     openenv-core
 
 # Expose port
-EXPOSE 8000
+EXPOSE 7860
 
 # Start server using your main()
 CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
