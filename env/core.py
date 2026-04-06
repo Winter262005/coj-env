@@ -16,8 +16,26 @@ class CloudEnv:
             health -= 0.5
 
         self.state.health = max(0.0, health)
+
+    def generate_alerts(self):
+        alerts = []
+
+        # Zombie volumes
+        if any(not v.attached and v.age > 30 for v in self.state.volumes):
+            alerts.append("UNUSED_VOLUME")
+
+        # Public DB (security risk)
+        if any(db.public for db in self.state.databases):
+            alerts.append("PUBLIC_DB")
+
+        # Idle dev instances
+        if any(i.tag == "dev" and i.cpu < 5 and i.status == "running" for i in self.state.instances):
+            alerts.append("IDLE_DEV_INSTANCE")
+
+        return alerts
     
     def reset(self):
+        self.steps = 0
         self.state = Observation(
             instances=[
                 Instance(id="i-1", cpu=2.0, status="running", tag="dev"),
@@ -34,6 +52,7 @@ class CloudEnv:
             cost=100.0,
             health=1.0
         )
+        self.state.alerts = self.generate_alerts()
         return self.state.model_dump()
 
     def get_state(self):
@@ -41,9 +60,15 @@ class CloudEnv:
 
     def step(self, action: dict):
         action = Action(**action)
+        self.steps += 1
 
         reward = 0.0
+        reward -= 0.01  # small penalty per step
         done = False
+        info = {
+            "action_success": False,
+            "reason": ""
+        }
 
         # Handle delete_volume
         if action.action_type == "delete_volume":
@@ -57,12 +82,16 @@ class CloudEnv:
                         self.state.volumes.remove(v)
                         self.state.cost = max(0.0, self.state.cost - 5)
                         reward += 0.1
+                        info["action_success"] = True
+                        info["reason"] = "deleted unused volume"
                     else:
                         reward -= 0.2
+                        info["reason"] = "attempted to delete active volume"
                     break
 
             if not found:
                 reward -= 0.3  # invalid target
+                info["reason"] = "volume not found"
 
         elif action.action_type == "stop_instance":
             target_id = action.target_id
@@ -75,14 +104,19 @@ class CloudEnv:
                         inst.status = "stopped"
                         self.state.cost = max(0.0, self.state.cost - 10)
                         reward += 0.2
+                        info["action_success"] = True
+                        info["reason"] = "stopped idle dev instance"
                     elif inst.tag == "prod":
                         reward -= 0.5
+                        info["reason"] = "cannot stop production instance"
                     else:
                         reward -= 0.1
+                        info["reason"] = "instance not suitable for stopping"
                     break
 
             if not found:
                 reward -= 0.3  # invalid target
+                info["reason"] = "instance not found"
 
         elif action.action_type == "secure_database":
             target_id = action.target_id
@@ -94,18 +128,24 @@ class CloudEnv:
                     if db.public:
                         db.public = False
                         reward += 0.3
+                        info["action_success"] = True
+                        info["reason"] = "secured public database"
                     else:
                         reward -= 0.1
+                        info["reason"] = "database already secure"
                     break
 
             if not found:
                 reward -= 0.3  # invalid target
+                info["reason"] = "database not found"
 
         # Handle noop
         elif action.action_type == "noop":
-            reward -= 0.01
+            reward -= 0.05
+            info["reason"] = "no operation performed"
 
         # Done condition → no more zombie volumes left
+        MAX_STEPS = 10
         dev_targets = [
             i for i in self.state.instances
             if i.tag == "dev" and i.cpu < 5 and i.status == "running"
@@ -121,22 +161,35 @@ class CloudEnv:
             if db.public
         ]
 
-        if len(dev_targets) == 0 and len(zombies_left) == 0 and len(insecure_dbs) == 0:
+        all_fixed = (
+            len(dev_targets) == 0 and
+            len(zombies_left) == 0 and
+            len(insecure_dbs) == 0
+        )
+
+        if all_fixed:
             done = True
+            info["reason"] = "all issues resolved"
+
+        elif self.steps >= MAX_STEPS:
+            done = True
+            info["reason"] = "max steps reached"
 
         self.update_health()
-        return self.state.model_dump(), reward, done, {}
+        self.state.alerts = self.generate_alerts()
+        reward = max(-1.0, min(1.0, reward))
+        return self.state.model_dump(), reward, done, info
     
 if __name__ == "__main__":
     env = CloudEnv()
-    state = env.reset()
+    env.reset()
 
-    print("Initial:", state)
+    env.step({"action_type": "delete_volume", "target_id": "v-1"})
+    env.step({"action_type": "secure_database", "target_id": "db-1"})
+    env.step({"action_type": "stop_instance", "target_id": "i-1"})
+    env.step({"action_type": "stop_instance", "target_id": "i-2"})
 
-    action = {"action_type": "stop_instance", "target_id": "i-3"}
-    state, reward, done, _ = env.step(action)
+    state, reward, done, info = env.step({"action_type": "noop"})
 
-    print("After Action:", state)
-    print("Reward:", reward)
     print("Done:", done)
-    print(state["health"])
+    print("Info:", info)

@@ -22,6 +22,7 @@ class Observation(BaseModel):
     databases: List[Database]  
     cost: float
     health: float
+    alerts: List[str] = []
 
 class Action(BaseModel):
     action_type: str
@@ -34,5 +35,3 @@ obs = Observation(  #test - may remove later
     cost=100.0,
     health=1.0
 )
-
-print(obs.model_dump())

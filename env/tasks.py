@@ -45,20 +45,33 @@ def dev_shutdown_grader(initial_state, final_state):
     return round(score, 2)
 
 def auditor_grader(initial_state, final_state):
-    # cost improvement
+    # Cost improvement
     initial_cost = initial_state["cost"]
     final_cost = final_state["cost"]
 
-    cost_score = max(0.0, min(1.0, (initial_cost - final_cost) / 10))
+    cost_score = max(0.0, min(1.0, (initial_cost - final_cost) / 20))
 
-    # security fix
+    # Security
     initial_insecure = any(db["public"] for db in initial_state.get("databases", []))
     final_secure = all(not db["public"] for db in final_state.get("databases", []))
 
     security_score = 1.0 if initial_insecure and final_secure else 0.0
 
-    # combine
-    score = 0.5 * cost_score + 0.5 * security_score
+    # Uptime
+    prod_down = any(
+        i["tag"] == "prod" and i["status"] == "stopped"
+        for i in final_state.get("instances", [])
+    )
+
+    uptime_score = 0.0 if prod_down else 1.0
+
+    # Final weighted score
+    score = (
+        0.4 * cost_score +
+        0.4 * security_score +
+        0.2 * uptime_score
+    )
+
     return round(score, 2)
 
 if __name__ == "__main__":
