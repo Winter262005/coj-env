@@ -41,13 +41,16 @@ class CloudEnv:
                 Instance(id="i-1", cpu=2.0, status="running", tag="dev"),
                 Instance(id="i-2", cpu=3.0, status="running", tag="dev"),
                 Instance(id="i-3", cpu=70.0, status="running", tag="prod"),
+                Instance(id="i-4", cpu=1.0, status="stopped", tag="dev"),
             ],
             volumes=[
-                Volume(id="v-1", attached=False, age=45),  # zombie
-                Volume(id="v-2", attached=True, age=10),   # active
+                Volume(id="v-1", attached=False, age=45),
+                Volume(id="v-2", attached=True, age=10),
+                Volume(id="v-3", attached=False, age=5),
             ],
             databases=[
-                Database(id="db-1", public=True),  # insecure
+                Database(id="db-1", public=True),
+                Database(id="db-2", public=False),
             ],
             cost=100.0,
             health=1.0
@@ -179,17 +182,3 @@ class CloudEnv:
         self.state.alerts = self.generate_alerts()
         reward = max(-1.0, min(1.0, reward))
         return self.state.model_dump(), reward, done, info
-    
-if __name__ == "__main__":
-    env = CloudEnv()
-    env.reset()
-
-    env.step({"action_type": "delete_volume", "target_id": "v-1"})
-    env.step({"action_type": "secure_database", "target_id": "db-1"})
-    env.step({"action_type": "stop_instance", "target_id": "i-1"})
-    env.step({"action_type": "stop_instance", "target_id": "i-2"})
-
-    state, reward, done, info = env.step({"action_type": "noop"})
-
-    print("Done:", done)
-    print("Info:", info)

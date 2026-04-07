@@ -1,3 +1,5 @@
+from env.core import CloudEnv
+
 def zombie_reaper_grader(initial_state, final_state):
     # Count orphaned volumes in initial state
     initial_zombies = [
@@ -73,47 +75,3 @@ def auditor_grader(initial_state, final_state):
     )
 
     return round(score, 2)
-
-if __name__ == "__main__":
-    from env.core import CloudEnv
-
-    env = CloudEnv()
-
-    # ---------- TASK 1: Zombie Reaper ----------
-    print("\n--- Testing Zombie Reaper ---")
-    initial = env.reset()
-
-    action = {"action_type": "delete_volume", "target_id": "v-1"}
-    final, _, _, _ = env.step(action)
-
-    score = zombie_reaper_grader(initial, final)
-    print("Zombie Score:", score)
-
-    # ---------- TASK 2: Dev Shutdown ----------
-    print("\n--- Testing Dev Shutdown ---")
-    initial = env.reset()
-
-    action = {"action_type": "stop_instance", "target_id": "i-1"}
-    final, _, _, _ = env.step(action)
-
-    score = dev_shutdown_grader(initial, final)
-    print("Dev Shutdown Score:", score)
-
-    # ---------- TASK 3: Auditor ----------
-
-    print("\n--- Testing Auditor ---")
-    env = CloudEnv()
-
-    initial = env.reset()
-
-    # Step 1: fix DB
-    env.step({"action_type": "secure_database", "target_id": "db-1"})
-
-    # Step 2: reduce cost (optional)
-    env.step({"action_type": "delete_volume", "target_id": "v-1"})
-
-    final = env.get_state()
-
-    score = auditor_grader(initial, final)
-
-    print("Auditor Score:", score)

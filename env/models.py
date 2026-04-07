@@ -28,7 +28,7 @@ class Action(BaseModel):
     action_type: str
     target_id: Optional[str] = None
 
-obs = Observation(  #test - may remove later
+obs = Observation(  
     instances=[],
     volumes=[],
     databases=[],
