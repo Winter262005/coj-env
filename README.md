@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ---
 title: Cloud-Ops Janitor (COJ-Env)
 emoji: 🧹
@@ -33,6 +34,24 @@ Agents interact through the standard OpenEnv API (`step()`, `reset()`, `state()`
 
 ---
 
+=======
+# Cloud-Ops Janitor - OpenEnv Environment
+
+## Introduction
+
+**Cloud-Ops Janitor** is a real-world OpenEnv environment that simulates cloud infrastructure optimization tasks commonly faced by DevOps and FinOps teams.
+
+The environment challenges agents to make intelligent decisions that balance:
+
+* Cost efficiency
+* Security (public exposure risks)
+* System reliability (uptime preservation)
+
+Agents interact through the standard OpenEnv API (`step()`, `reset()`, `state()`) and must learn to manage cloud resources effectively under realistic constraints.
+
+---
+
+>>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
 ## Motivation
 
 Modern cloud systems often accumulate inefficiencies such as:
@@ -45,6 +64,72 @@ This environment models these real-world issues and provides a controlled settin
 
 ---
 
+<<<<<<< HEAD
+=======
+## Tasks & Evaluation
+
+Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.0` and `1.0`.
+
+---
+
+### Task 1 - Zombie Reaper (Easy)
+
+**Objective:**
+Remove all unattached volumes older than 30 days.
+
+**Scoring:**
+Percentage of correctly removed zombie volumes.
+
+---
+
+### Task 2 - Dev Shutdown (Medium)
+
+**Objective:**
+Stop low-CPU development instances without affecting production systems.
+
+**Scoring:**
+Proportion of valid dev instances correctly stopped.
+
+---
+
+### Task 3 - Auditor (Hard)
+
+**Objective:**
+Simultaneously:
+
+* Reduce infrastructure cost
+* Secure public databases
+* Maintain production uptime
+
+**Scoring:**
+Weighted multi-objective score:
+
+* Cost optimization
+* Security improvement
+* Uptime preservation
+
+---
+
+## Baseline Inference
+
+A deterministic rule-based agent is provided as a baseline.
+
+Characteristics:
+
+* Uses simple heuristics (no ML)
+* Interacts via API endpoints
+* Produces reproducible scores
+* Follows required logging format:
+
+```
+[START]
+[STEP]
+[END]
+```
+
+---
+
+>>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
 ## Setup & Usage
 
 ### 1. Clone repository
@@ -110,6 +195,7 @@ http://localhost:7860/docs
 
 ---
 
+<<<<<<< HEAD
 ## Tasks & Evaluation
 
 Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.0` and `1.0`.
@@ -173,6 +259,8 @@ Characteristics:
 
 ---
 
+=======
+>>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
 ## Deployment
 
 The environment is deployed as a Hugging Face Space using Docker and is fully compliant with the OpenEnv specification.
