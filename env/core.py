@@ -3,6 +3,7 @@ from env.models import Observation, Instance, Volume, Database, Action
 class CloudEnv:
     def __init__(self):
         self.state = None
+        self.steps = 0          #FIXED : AttributeError
 
     def update_health(self):
         health = 1.0
@@ -33,6 +34,35 @@ class CloudEnv:
             alerts.append("IDLE_DEV_INSTANCE")
 
         return alerts
+    
+    # ADDED : Potential Function added for better reward calculations
+    def _potential(self, state):
+        # Max counts in current scenario
+        max_zombies  = 2   # you have 2 volumes
+        max_devs     = 2   # 2 dev instances
+        max_insec    = 1   # 1 database
+
+        zombies = sum(
+            1 for v in state.volumes
+            if not v.attached and v.age > 30
+        )
+        idle_devs = sum(
+            1 for i in state.instances
+            if i.tag == "dev" and i.cpu < 5 and i.status == "running"
+        )
+        insecure = sum(
+            1 for db in state.databases
+            if db.public
+        )
+
+        # Normalised fractions in [0,1]
+        z = zombies  / max_zombies if max_zombies else 0.0
+        d = idle_devs / max_devs   if max_devs   else 0.0
+        b = insecure  / max_insec  if max_insec  else 0.0
+
+        # Weighted: security > dev shutdown > volume cleanup
+        # Result always in [-1.0, 0.0]
+        return -(0.2 * z + 0.3 * d + 0.5 * b)
     
     def reset(self):
         self.steps = 0
@@ -73,6 +103,12 @@ class CloudEnv:
             "reason": ""
         }
 
+        # FIXED : a None error when running an agent
+        if self.state is None:
+            self.reset()
+
+        phi_before = self._potential(self.state)
+
         # Handle delete_volume
         if action.action_type == "delete_volume":
             target_id = action.target_id
@@ -84,7 +120,7 @@ class CloudEnv:
                     if not v.attached and v.age > 30:
                         self.state.volumes.remove(v)
                         self.state.cost = max(0.0, self.state.cost - 5)
-                        reward += 0.1
+                        reward += 0.15
                         info["action_success"] = True
                         info["reason"] = "deleted unused volume"
                     else:
@@ -106,7 +142,7 @@ class CloudEnv:
                     if inst.tag == "dev" and inst.cpu < 5 and inst.status == "running":
                         inst.status = "stopped"
                         self.state.cost = max(0.0, self.state.cost - 10)
-                        reward += 0.2
+                        reward += 0.35
                         info["action_success"] = True
                         info["reason"] = "stopped idle dev instance"
                     elif inst.tag == "prod":
@@ -130,7 +166,7 @@ class CloudEnv:
                     found = True
                     if db.public:
                         db.public = False
-                        reward += 0.3
+                        reward += 0.5
                         info["action_success"] = True
                         info["reason"] = "secured public database"
                     else:
@@ -146,6 +182,13 @@ class CloudEnv:
         elif action.action_type == "noop":
             reward -= 0.05
             info["reason"] = "no operation performed"
+
+        # ADDED : Shaping Function
+        # F(s,s') = gamma * phi_after - phi_before
+        gamma = 0.99
+        phi_after = self._potential(self.state)
+        shaping = gamma * phi_after - phi_before
+        reward += shaping
 
         # Done condition → no more zombie volumes left
         MAX_STEPS = 10
@@ -172,6 +215,9 @@ class CloudEnv:
 
         if all_fixed:
             done = True
+            # ADDED : Terminal Bonus = base + efficiency
+            efficiency_bonus = 0.5 * (MAX_STEPS - self.steps) / MAX_STEPS
+            reward += 1.0 + efficiency_bonus
             info["reason"] = "all issues resolved"
 
         elif self.steps >= MAX_STEPS:

@@ -4,7 +4,7 @@ description: >
   A reinforcement learning environment for optimizing cloud infrastructure
   by removing unused resources while maintaining system health.
 
-entrypoint: app:app
+entrypoint: server.app:app
 
 tasks:
   - name: zombie_reaper

@@ -1,9 +1,18 @@
 from fastapi import FastAPI
 from env.core import CloudEnv
+from typing import Optional
+from pydantic import BaseModel
 
 app = FastAPI()
 env = CloudEnv()
 
+class ActionRequest(BaseModel):
+    action_type: str
+    target_id: Optional[str] = None
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "env": "CloudEnv"}
 
 @app.post("/reset")
 def reset():
@@ -11,7 +20,7 @@ def reset():
 
 
 @app.post("/step")
-def step(action: dict):
+def step(action: ActionRequest):
     state, reward, done, info = env.step(action)
     return {
         "observation": state,
