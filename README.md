@@ -45,6 +45,32 @@ This environment models these real-world issues and provides a controlled settin
 
 ---
 
+## Environment
+
+```bash
+instances=[
+                Instance(id="i-1", cpu=round(rng.uniform(0.5, 4.5), 1), status="running", tag="dev"),
+                Instance(id="i-2", cpu=round(rng.uniform(0.5, 4.5), 1), status="running", tag="dev"),
+                Instance(id="i-3", cpu=round(rng.uniform(55, 90),   1), status="running", tag="prod"),
+                Instance(id="i-4", cpu=round(rng.uniform(60, 85),   1), status="running", tag="prod"),
+            ],
+            volumes=[
+                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),        # zombie
+                Volume(id="v-2", attached=False, age=rng.randint(35, 75)
+                       if rng.random() > 0.4 else rng.randint(0, 25)),            # maybe zombie
+                Volume(id="v-3", attached=True,  age=rng.randint(5,  20)),        # safe
+            ],
+            databases=[
+                Database(id="db-1", public=True),
+                Database(id="db-2", public=rng.choice([True, False])),
+            ],
+            cost=round(rng.uniform(90, 120), 2),
+            health=1.0,
+        )
+```
+
+---
+
 ## Setup & Usage
 
 ### 1. Clone repository
