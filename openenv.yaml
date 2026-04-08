@@ -2,19 +2,51 @@ name: cloud-ops-janitor
 version: 1.0.0
 description: >
   A reinforcement learning environment for optimizing cloud infrastructure
-  by removing unused resources while maintaining system health.
+  by removing unused resources, securing databases, and preserving uptime.
 
-entrypoint: server.app:app
+entrypoint: server.app:app # matches pyproject.toml [tool.openenv]
+
+observation_space:
+  type: dict
+  fields:
+    instances: "list of Instance (id, cpu, status, tag)"
+    volumes: "list of Volume   (id, attached, age)"
+    databases: "list of Database (id, public)"
+    cost: "float — current infra cost"
+    health: "float [0,1] — system health"
+    alerts: "list[str] — active alert codes"
+
+action_space:
+  type: dict
+  fields:
+    action_type: "str — delete_volume | stop_instance | secure_database | noop"
+    target_id: "str | null — resource ID to act on"
 
 tasks:
   - name: zombie_reaper
     description: Delete all unattached volumes older than 30 days
+    difficulty: easy
     reward_range: [0.0, 1.0]
+    grader: env.tasks.zombie_reaper_grader
 
   - name: dev_shutdown
     description: Stop all low-CPU dev instances without affecting production
+    difficulty: medium
     reward_range: [0.0, 1.0]
+    grader: env.tasks.dev_shutdown_grader
 
   - name: auditor
-    description: Secure public database and optimize cost without breaking system
+    description: >
+      Simultaneously reduce cost, secure public databases,
+      maintain production uptime, and avoid deleting attached volumes
+    difficulty: hard
     reward_range: [0.0, 1.0]
+    grader: env.tasks.auditor_grader
+
+baseline:
+  model: Qwen/Qwen2.5-72B-Instruct
+  scores:
+    zombie_reaper: 1.00
+    dev_shutdown: 1.00
+    auditor: 0.87
+    average: 0.96
