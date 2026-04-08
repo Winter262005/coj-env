@@ -4,7 +4,7 @@ from env.tasks import zombie_reaper_grader, dev_shutdown_grader, auditor_grader
 from typing import Optional
 from pydantic import BaseModel
 
-app = FastAPI(title="Cloud-Ops Janitor", version="1.0.0")
+app = FastAPI(title="Cloud-Ops Janitor", version="2.0.0")
 env = CloudEnv()
 
 GRADERS = {
@@ -19,40 +19,41 @@ class ActionRequest(BaseModel):
     target_id: Optional[str] = None
 
 
-# ── Health ────────────────────────────────────────────────────────────────────
+class ResetRequest(BaseModel):
+    task: str = "auditor"           # ← which task to set up the episode for
+
 
 @app.get("/health")
 def health():
     return {"status": "ok", "env": "CloudEnv"}
 
 
-# ── OpenEnv spec endpoints ────────────────────────────────────────────────────
-
 @app.post("/reset")
-def reset():
-    obs = env.reset()
-    env._initial_snapshot = obs          # stored for /grade
+def reset(req: ResetRequest = ResetRequest()):
+    """Reset the env for the specified task — each task gets a distinct start state."""
+    obs = env.reset(task=req.task)
+    env._initial_snapshot = obs
     return obs
 
 
 @app.post("/step")
 def step(action: ActionRequest):
-    obs, reward, done, info = env.step(action.model_dump())   # pass dict, not Pydantic obj
+    obs, reward, done, info = env.step(action.model_dump())
     return {"observation": obs, "reward": reward, "done": done, "info": info}
 
 
 @app.get("/state")
 def state():
-    return env.state()                   # renamed from get_state()
+    return env.state()
 
-
-# ── Grading endpoint ──────────────────────────────────────────────────────────
 
 @app.get("/grade/{task_name}")
 def grade(task_name: str):
-    """Return a 0.0–1.0 score for the completed episode on the given task."""
     if task_name not in GRADERS:
-        raise HTTPException(status_code=404, detail=f"Unknown task '{task_name}'. Valid: {list(GRADERS)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown task '{task_name}'. Valid: {list(GRADERS)}"
+        )
     initial = getattr(env, "_initial_snapshot", None)
     if initial is None:
         raise HTTPException(status_code=400, detail="Call /reset before /grade")
@@ -60,14 +61,10 @@ def grade(task_name: str):
     return {"task": task_name, "score": score}
 
 
-# ── Root ──────────────────────────────────────────────────────────────────────
-
 @app.get("/")
 def root():
     return {"status": "ok", "docs": "/docs"}
 
-
-# ── Entrypoint ────────────────────────────────────────────────────────────────
 
 import uvicorn
 
