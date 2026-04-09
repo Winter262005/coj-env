@@ -7,9 +7,10 @@ MAX_STEPS = 10
 def _clamp01_open(x: float) -> float:
     """
     Clamp to strict open interval (0,1). Never return exactly 0.0 or 1.0.
+    We use 0.01 and 0.99 so even if the platform rounds to 2 decimals,
+    it stays strictly inside (0,1).
     """
-    eps = 1e-6
-    return min(1.0 - eps, max(eps, float(x)))
+    return float(min(0.99, max(0.01, x)))
 
 
 class CloudEnv:
@@ -26,7 +27,10 @@ class CloudEnv:
         health = 1.0
         if any(db.public for db in self._state.databases):
             health -= 0.3
-        if any(i.tag == "prod" and i.status == "stopped" for i in self._state.instances):
+        if any(
+            i.tag == "prod" and i.status == "stopped"
+            for i in self._state.instances
+        ):
             health -= 0.5
         self._state.health = max(0.0, health)
 
@@ -47,10 +51,15 @@ class CloudEnv:
         n_z = self._max_counts.get("zombies", 1)
         n_d = self._max_counts.get("devs", 1)
         n_b = self._max_counts.get("insecure", 1)
-        z = sum(1 for v in obs.volumes if not v.attached and v.age > 30) / n_z
+        z = sum(
+            1 for v in obs.volumes if not v.attached and v.age > 30
+        ) / n_z
         d = sum(
-            1 for i in obs.instances
-            if i.tag == "dev" and i.cpu < 5 and i.status == "running"
+            1
+            for i in obs.instances
+            if i.tag == "dev"
+            and i.cpu < 5
+            and i.status == "running"
         ) / n_d
         b = sum(1 for db in obs.databases if db.public) / n_b
         return -(0.5 * b + 0.3 * d + 0.2 * z)
@@ -64,7 +73,9 @@ class CloudEnv:
 
         if self._task == "dev_shutdown":
             return not any(
-                i.tag == "dev" and i.cpu < 5 and i.status == "running"
+                i.tag == "dev"
+                and i.cpu < 5
+                and i.status == "running"
                 for i in self._state.instances
             )
 
@@ -74,7 +85,9 @@ class CloudEnv:
                 not v.attached and v.age > 30 for v in self._state.volumes
             )
             and not any(
-                i.tag == "dev" and i.cpu < 5 and i.status == "running"
+                i.tag == "dev"
+                and i.cpu < 5
+                and i.status == "running"
                 for i in self._state.instances
             )
             and not any(db.public for db in self._state.databases)
@@ -106,10 +119,10 @@ class CloudEnv:
                 ),
             ],
             volumes=[
-                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),  # zombie
-                Volume(id="v-2", attached=False, age=rng.randint(35, 75)),  # zombie
-                Volume(id="v-3", attached=True, age=rng.randint(5, 20)),   # safe
-                Volume(id="v-4", attached=False, age=rng.randint(0, 25)),  # young orphan
+                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),
+                Volume(id="v-2", attached=False, age=rng.randint(35, 75)),
+                Volume(id="v-3", attached=True, age=rng.randint(5, 20)),
+                Volume(id="v-4", attached=False, age=rng.randint(0, 25)),
             ],
             databases=[
                 Database(id="db-1", public=False),
@@ -149,8 +162,8 @@ class CloudEnv:
                 ),
             ],
             volumes=[
-                Volume(id="v-1", attached=True, age=rng.randint(5, 30)),  # safe
-                Volume(id="v-2", attached=False, age=rng.randint(0, 25)),  # young orphan
+                Volume(id="v-1", attached=True, age=rng.randint(5, 30)),
+                Volume(id="v-2", attached=False, age=rng.randint(0, 25)),
             ],
             databases=[
                 Database(id="db-1", public=False),
@@ -190,7 +203,7 @@ class CloudEnv:
                 ),
             ],
             volumes=[
-                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),  # zombie
+                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),
                 Volume(
                     id="v-2",
                     attached=False,
@@ -198,9 +211,9 @@ class CloudEnv:
                         rng.randint(35, 75)
                         if rng.random() > 0.4
                         else rng.randint(0, 25)
-                    ),  # maybe zombie
+                    ),
                 ),
-                Volume(id="v-3", attached=True, age=rng.randint(5, 20)),  # safe
+                Volume(id="v-3", attached=True, age=rng.randint(5, 20)),
             ],
             databases=[
                 Database(id="db-1", public=True),

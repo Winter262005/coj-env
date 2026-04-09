@@ -1,12 +1,10 @@
-def _clamp(score: float) -> float:
+def _clamp01_open(score: float) -> float:
     """
     Enforce strict open interval (0.0, 1.0) — never exactly 0 or 1.
-    Any input <= 0 becomes a tiny positive epsilon.
-    Any input >= 1 becomes just below 1.
+    We use 0.01 and 0.99 so even if the platform rounds to 2 decimals,
+    the value stays strictly inside (0, 1).
     """
-    # use very small eps so we are clearly inside (0,1)
-    eps = 1e-6
-    return min(1.0 - eps, max(eps, float(score)))
+    return float(min(0.99, max(0.01, score)))
 
 
 def zombie_reaper_grader(initial: dict, final: dict) -> float:
@@ -24,19 +22,19 @@ def zombie_reaper_grader(initial: dict, final: dict) -> float:
         v["id"] for v in initial.get("volumes", []) if v.get("attached")
     }
     if deleted_ids & was_attached:
-        # integrity violation → worst possible score but strictly > 0
-        return _clamp(0.0)
+        # worst score but strictly > 0
+        return _clamp01_open(0.0)
 
     if total == 0:
-        # nothing to do → best possible score but strictly < 1
-        return _clamp(1.0)
+        # best score but strictly < 1
+        return _clamp01_open(1.0)
 
     remaining = [
         v for v in final.get("volumes", [])
         if not v.get("attached") and v.get("age", 0) > 30
     ]
     deleted = total - len(remaining)
-    return _clamp(deleted / total)
+    return _clamp01_open(deleted / total)
 
 
 def dev_shutdown_grader(initial: dict, final: dict) -> float:
@@ -46,7 +44,7 @@ def dev_shutdown_grader(initial: dict, final: dict) -> float:
         for i in final.get("instances", [])
     )
     if prod_stopped:
-        return _clamp(0.0)
+        return _clamp01_open(0.0)
 
     initial_targets = [
         i for i in initial.get("instances", [])
@@ -55,7 +53,7 @@ def dev_shutdown_grader(initial: dict, final: dict) -> float:
     total = len(initial_targets)
 
     if total == 0:
-        return _clamp(1.0)
+        return _clamp01_open(1.0)
 
     target_ids = {i["id"] for i in initial_targets}
     final_stopped = [
@@ -63,7 +61,7 @@ def dev_shutdown_grader(initial: dict, final: dict) -> float:
         if i["id"] in target_ids and i.get("status") == "stopped"
     ]
     stopped = len(final_stopped)
-    return _clamp(stopped / total)
+    return _clamp01_open(stopped / total)
 
 
 def auditor_grader(initial: dict, final: dict) -> float:
@@ -71,7 +69,6 @@ def auditor_grader(initial: dict, final: dict) -> float:
     initial_cost = initial.get("cost", 0)
     final_cost = final.get("cost", 0)
 
-    # Dynamic max savings: dev stops ($10 each) + zombie deletes ($5 each)
     dev_targets = [
         i for i in initial.get("instances", [])
         if i.get("tag") == "dev" and i.get("cpu", 100) < 5
@@ -82,10 +79,10 @@ def auditor_grader(initial: dict, final: dict) -> float:
     ]
     max_savings = len(dev_targets) * 10 + len(zombies) * 5
     if max_savings == 0:
-        max_savings = 20  # fallback to avoid div/0
+        max_savings = 20
 
     cost_score = (initial_cost - final_cost) / max_savings
-    cost_score = _clamp(cost_score)
+    cost_score = _clamp01_open(cost_score)
 
     # Security score (weight 0.35)
     initial_public = [
@@ -95,18 +92,18 @@ def auditor_grader(initial: dict, final: dict) -> float:
         db for db in final.get("databases", []) if db.get("public")
     ]
     if len(initial_public) == 0:
-        security_score = _clamp(1.0)
+        security_score = _clamp01_open(1.0)
     else:
         secured = len(initial_public) - len(final_public)
-        security_score = _clamp(secured / len(initial_public))
+        security_score = _clamp01_open(secured / len(initial_public))
 
     # Efficiency score (weight 0.15)
     final_alerts = len(final.get("alerts", []))
     initial_alerts = len(initial.get("alerts", []))
     if initial_alerts > 0 and final_alerts == 0:
-        efficiency_score = _clamp(1.0)
+        efficiency_score = _clamp01_open(1.0)
     else:
-        efficiency_score = _clamp(
+        efficiency_score = _clamp01_open(
             (initial_alerts - final_alerts) / max(1, initial_alerts)
         )
 
@@ -122,7 +119,7 @@ def auditor_grader(initial: dict, final: dict) -> float:
         v["id"] for v in initial.get("volumes", []) if v.get("attached")
     }
     integrity_ok = not prod_down and not (deleted_ids & was_attached)
-    integrity_score = _clamp(1.0 if integrity_ok else 0.0)
+    integrity_score = _clamp01_open(1.0 if integrity_ok else 0.0)
 
     raw = (
         0.40 * cost_score +
@@ -130,4 +127,4 @@ def auditor_grader(initial: dict, final: dict) -> float:
         0.15 * efficiency_score +
         0.10 * integrity_score
     )
-    return _clamp(raw)
+    return _clamp01_open(raw)
