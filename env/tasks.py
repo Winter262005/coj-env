@@ -1,126 +1,102 @@
-"""
-Task graders for Cloud-Ops Janitor.
-
-Each grader:
-  - Accepts (initial_state: dict, final_state: dict)
-  - Returns a float strictly in (0.0, 1.0)
-  - Is fully deterministic given the same inputs
-
-Difficulty: zombie_reaper (easy) → dev_shutdown (medium) → auditor (hard)
-"""
+def _clamp(score: float) -> float:
+    """Enforce strict open interval (0.0, 1.0)   never exactly 0 or 1."""
+    return max(0.01, min(0.99, round(score, 4)))
 
 
-# ================= HELPER =================
-def clamp_score(score: float) -> float:
-    """Ensure score is strictly within (0, 1)"""
-    return max(0.01, min(0.99, round(score, 2)))
-
-
-# ── Task 1 — Zombie Reaper (Easy) ─────────────────────────────────────────────
-
-def zombie_reaper_grader(initial_state: dict, final_state: dict) -> float:
-    initial_zombies = [
-        v for v in initial_state["volumes"]
-        if not v["attached"] and v["age"] > 30
-    ]
-    remaining_zombies = [
-        v for v in final_state["volumes"]
-        if not v["attached"] and v["age"] > 30
-    ]
-
-    # Integrity check: attached volumes must never be deleted
-    initial_safe = {v["id"] for v in initial_state["volumes"] if v["attached"]}
-    final_ids = {v["id"] for v in final_state["volumes"]}
-
-    if initial_safe - final_ids:
-        return 0.01  # instead of 0.0
-
+def zombie_reaper_grader(initial: dict, final: dict) -> float:
+    initial_zombies = [v for v in initial.get("volumes", [])
+                       if not v.get("attached") and v.get("age", 0) > 30]
     total = len(initial_zombies)
+
+    # Integrity check   penalise deleting attached volumes
+    initial_ids   = {v["id"] for v in initial.get("volumes", [])}
+    final_ids     = {v["id"] for v in final.get("volumes", [])}
+    deleted_ids   = initial_ids - final_ids
+    was_attached  = {v["id"] for v in initial.get("volumes", []) if v.get("attached")}
+    if deleted_ids & was_attached:
+        return _clamp(0.0)   # integrity violation
+
     if total == 0:
-        return 0.99  # instead of 1.0
+        return _clamp(1.0)   # nothing to do   full marks
 
-    deleted = total - len(remaining_zombies)
-    return clamp_score(deleted / total)
+    remaining = [v for v in final.get("volumes", [])
+                 if not v.get("attached") and v.get("age", 0) > 30]
+    deleted = total - len(remaining)
+    return _clamp(deleted / total)
 
 
-# ── Task 2 — Dev Shutdown (Medium) ────────────────────────────────────────────
-
-def dev_shutdown_grader(initial_state: dict, final_state: dict) -> float:
-    # Immediate disqualification if prod was downed
-    prod_down = any(
-        i["tag"] == "prod" and i["status"] == "stopped"
-        for i in final_state["instances"]
+def dev_shutdown_grader(initial: dict, final: dict) -> float:
+    # Integrity check   penalise stopping prod instances
+    prod_stopped = any(
+        i.get("tag") == "prod" and i.get("status") == "stopped"
+        for i in final.get("instances", [])
     )
-    if prod_down:
-        return 0.01  # instead of 0.0
+    if prod_stopped:
+        return _clamp(0.0)
 
-    initial_targets = [
-        i for i in initial_state["instances"]
-        if i["tag"] == "dev" and i["cpu"] < 5
-    ]
-    final_stopped = [
-        i for i in final_state["instances"]
-        if i["tag"] == "dev" and i["cpu"] < 5 and i["status"] == "stopped"
-    ]
-
+    initial_targets = [i for i in initial.get("instances", [])
+                       if i.get("tag") == "dev" and i.get("cpu", 100) < 5]
     total = len(initial_targets)
+
     if total == 0:
-        return 0.99  # instead of 1.0
+        return _clamp(1.0)
 
-    return clamp_score(len(final_stopped) / total)
+    target_ids   = {i["id"] for i in initial_targets}
+    final_stopped = [i for i in final.get("instances", [])
+                     if i["id"] in target_ids and i.get("status") == "stopped"]
+    stopped = len(final_stopped)
+    return _clamp(stopped / total)
 
 
-# ── Task 3 — Auditor (Hard) ───────────────────────────────────────────────────
+def auditor_grader(initial: dict, final: dict) -> float:
+    #    Cost score (weight 0.40)                                              
+    initial_cost = initial.get("cost", 0)
+    final_cost   = final.get("cost", 0)
 
-def auditor_grader(initial_state: dict, final_state: dict) -> float:
+    # Dynamic max savings: dev stops ($10 each) + zombie deletes ($5 each)
+    dev_targets = [i for i in initial.get("instances", [])
+                   if i.get("tag") == "dev" and i.get("cpu", 100) < 5]
+    zombies     = [v for v in initial.get("volumes", [])
+                   if not v.get("attached") and v.get("age", 0) > 30]
+    max_savings = len(dev_targets) * 10 + len(zombies) * 5
+    if max_savings == 0:
+        max_savings = 20  # fallback to avoid div/0
 
-    # ── Cost score ────────────────────────────────────────────────────────
-    max_savings = (
-        sum(10 for i in initial_state["instances"]
-            if i["tag"] == "dev" and i["cpu"] < 5 and i["status"] == "running")
-        + sum(5 for v in initial_state["volumes"]
-              if not v["attached"] and v["age"] > 30)
-    )
+    cost_score = max(0.0, min(1.0, (initial_cost - final_cost) / max_savings))
 
-    actual_savings = initial_state["cost"] - final_state["cost"]
-
-    if max_savings > 0:
-        cost_score = max(0.0, min(1.0, actual_savings / max_savings))
-    else:
-        cost_score = 1.0
-
-    cost_score = clamp_score(cost_score)
-
-    # ── Security score ─────────────────────────────────────────────────────
-    initial_public = [db for db in initial_state["databases"] if db["public"]]
-    final_public = [db for db in final_state["databases"] if db["public"]]
-
-    if initial_public:
-        security_score = 1.0 - len(final_public) / len(initial_public)
-    else:
+    #    Security score (weight 0.35)                                          
+    initial_public = [db for db in initial.get("databases", []) if db.get("public")]
+    final_public   = [db for db in final.get("databases",   []) if db.get("public")]
+    if len(initial_public) == 0:
         security_score = 1.0
+    else:
+        secured = len(initial_public) - len(final_public)
+        security_score = secured / len(initial_public)
 
-    security_score = clamp_score(security_score)
+    #    Efficiency score (weight 0.15)                                         
+    # Approximate steps from cost delta as proxy when step count not available
+    final_alerts  = len(final.get("alerts", []))
+    initial_alerts = len(initial.get("alerts", []))
+    efficiency_score = 1.0 if initial_alerts > 0 and final_alerts == 0 else (
+        max(0.0, (initial_alerts - final_alerts) / max(1, initial_alerts))
+    )
 
-    # ── Uptime score ───────────────────────────────────────────────────────
+    #    Integrity score (weight 0.10)                                          
     prod_down = any(
-        i["tag"] == "prod" and i["status"] == "stopped"
-        for i in final_state["instances"]
+        i.get("tag") == "prod" and i.get("status") == "stopped"
+        for i in final.get("instances", [])
     )
-    uptime_score = 0.01 if prod_down else 0.99
+    initial_ids  = {v["id"] for v in initial.get("volumes", [])}
+    final_ids    = {v["id"] for v in final.get("volumes", [])}
+    deleted_ids  = initial_ids - final_ids
+    was_attached = {v["id"] for v in initial.get("volumes", []) if v.get("attached")}
+    integrity_ok = not prod_down and not (deleted_ids & was_attached)
+    integrity_score = 1.0 if integrity_ok else 0.0
 
-    # ── Integrity score ────────────────────────────────────────────────────
-    initial_attached = {v["id"] for v in initial_state["volumes"] if v["attached"]}
-    final_ids = {v["id"] for v in final_state["volumes"]}
-
-    integrity_score = 0.01 if (initial_attached - final_ids) else 0.99
-
-    # ── Final weighted score ───────────────────────────────────────────────
-    score = (
-        0.35 * cost_score
-        + 0.35 * security_score
-        + 0.20 * uptime_score
-        + 0.10 * integrity_score
+    raw = (
+        0.40 * cost_score +
+        0.35 * security_score +
+        0.15 * efficiency_score +
+        0.10 * integrity_score
     )
-
-    return clamp_score(score)
+    return _clamp(raw)
