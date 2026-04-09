@@ -5,6 +5,9 @@ FROM python:3.10-slim
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPYCACHEPREFIX=/tmp/pycache
+
 
 # Set working directory
 WORKDIR /app
