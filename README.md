@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ---
 title: Cloud-Ops Janitor (COJ-Env)
 emoji: 🧹
@@ -9,12 +8,12 @@ app_port: 7860
 license: mit
 language: en
 tags:
-- openenv
-- reinforcement-learning
-- simulation
-- cloud-ops
-- infrastructure
-- devops
+  - openenv
+  - reinforcement-learning
+  - simulation
+  - cloud-ops
+  - infrastructure
+  - devops
 short_description: OpenEnv environment that simulates cloud infra optimization
 ---
 
@@ -26,46 +25,28 @@ short_description: OpenEnv environment that simulates cloud infra optimization
 
 The environment challenges agents to make intelligent decisions that balance:
 
-* Cost efficiency
-* Security (public exposure risks)
-* System reliability (uptime preservation)
+- Cost efficiency
+- Security (public exposure risks)
+- System reliability (uptime preservation)
 
 Agents interact through the standard OpenEnv API (`step()`, `reset()`, `state()`) and must learn to manage cloud resources effectively under realistic constraints.
 
 ---
 
-=======
-# Cloud-Ops Janitor - OpenEnv Environment
-
-## Introduction
-
-**Cloud-Ops Janitor** is a real-world OpenEnv environment that simulates cloud infrastructure optimization tasks commonly faced by DevOps and FinOps teams.
-
-The environment challenges agents to make intelligent decisions that balance:
-
-* Cost efficiency
-* Security (public exposure risks)
-* System reliability (uptime preservation)
-
-Agents interact through the standard OpenEnv API (`step()`, `reset()`, `state()`) and must learn to manage cloud resources effectively under realistic constraints.
-
----
-
->>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
 ## Motivation
 
 Modern cloud systems often accumulate inefficiencies such as:
 
-* Unused storage volumes (wasted cost)
-* Idle development instances
-* Publicly exposed databases (security risks)
+- Unused storage volumes (wasted cost)
+- Idle development instances
+- Publicly exposed databases (security risks)
 
 This environment models these real-world issues and provides a controlled setting for training and evaluating AI agents on **multi-objective infrastructure management**.
 
 ---
 
-<<<<<<< HEAD
 =======
+
 ## Tasks & Evaluation
 
 Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.0` and `1.0`.
@@ -97,16 +78,16 @@ Proportion of valid dev instances correctly stopped.
 **Objective:**
 Simultaneously:
 
-* Reduce infrastructure cost
-* Secure public databases
-* Maintain production uptime
+- Reduce infrastructure cost
+- Secure public databases
+- Maintain production uptime
 
 **Scoring:**
 Weighted multi-objective score:
 
-* Cost optimization
-* Security improvement
-* Uptime preservation
+- Cost optimization
+- Security improvement
+- Uptime preservation
 
 ---
 
@@ -116,20 +97,45 @@ A deterministic rule-based agent is provided as a baseline.
 
 Characteristics:
 
-* Uses simple heuristics (no ML)
-* Interacts via API endpoints
-* Produces reproducible scores
-* Follows required logging format:
+- Uses simple heuristics (no ML)
+- Interacts via API endpoints
+- Produces reproducible scores
+- Follows required logging format:
 
-```
+````
 [START]
 [STEP]
 [END]
-```
+=======
+## Environment
+
+```bash
+instances=[
+                Instance(id="i-1", cpu=round(rng.uniform(0.5, 4.5), 1), status="running", tag="dev"),
+                Instance(id="i-2", cpu=round(rng.uniform(0.5, 4.5), 1), status="running", tag="dev"),
+                Instance(id="i-3", cpu=round(rng.uniform(55, 90),   1), status="running", tag="prod"),
+                Instance(id="i-4", cpu=round(rng.uniform(60, 85),   1), status="running", tag="prod"),
+            ],
+            volumes=[
+                Volume(id="v-1", attached=False, age=rng.randint(35, 90)),        # zombie
+                Volume(id="v-2", attached=False, age=rng.randint(35, 75)
+                       if rng.random() > 0.4 else rng.randint(0, 25)),            # maybe zombie
+                Volume(id="v-3", attached=True,  age=rng.randint(5,  20)),        # safe
+            ],
+            databases=[
+                Database(id="db-1", public=True),
+                Database(id="db-2", public=rng.choice([True, False])),
+            ],
+            cost=round(rng.uniform(90, 120), 2),
+            health=1.0,
+        )
+
+````
 
 ---
 
->>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
+<<<<<<< HEAD
+
 ## Setup & Usage
 
 ### 1. Clone repository
@@ -155,6 +161,7 @@ uv sync
 ```bash
 python -m server.app
 ```
+
 server will start at http://localhost:8000
 
 ---
@@ -162,6 +169,7 @@ server will start at http://localhost:8000
 ### 4. Test API Endpoints
 
 Open in browser:
+
 ```bash
 http://localhost:8000/docs
 ```
@@ -179,23 +187,25 @@ python inference.py
 ### 6. Run using Docker
 
 build:
+
 ```bash
 docker build -t coj-env .
 ```
 
 run:
+
 ```bash
 docker run -p 7860:7860 coj-env
 ```
 
 access API:
+
 ```bash
 http://localhost:7860/docs
 ```
 
 ---
 
-<<<<<<< HEAD
 ## Tasks & Evaluation
 
 Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.0` and `1.0`.
@@ -227,16 +237,16 @@ Proportion of valid dev instances correctly stopped.
 **Objective:**
 Simultaneously:
 
-* Reduce infrastructure cost
-* Secure public databases
-* Maintain production uptime
+- Reduce infrastructure cost
+- Secure public databases
+- Maintain production uptime
 
 **Scoring:**
 Weighted multi-objective score:
 
-* Cost optimization
-* Security improvement
-* Uptime preservation
+- Cost optimization
+- Security improvement
+- Uptime preservation
 
 ---
 
@@ -246,10 +256,10 @@ A deterministic rule-based agent is provided as a baseline.
 
 Characteristics:
 
-* Uses simple heuristics (no ML)
-* Interacts via API endpoints
-* Produces reproducible scores
-* Follows required logging format:
+- Uses simple heuristics (no ML)
+- Interacts via API endpoints
+- Produces reproducible scores
+- Follows required logging format:
 
 ```
 [START]
@@ -260,7 +270,7 @@ Characteristics:
 ---
 
 =======
->>>>>>> ba72070a0ab6d80166a14921edae0e9bc16588b0
+
 ## Deployment
 
 The environment is deployed as a Hugging Face Space using Docker and is fully compliant with the OpenEnv specification.
@@ -269,18 +279,18 @@ The environment is deployed as a Hugging Face Space using Docker and is fully co
 
 ## OpenEnv Compliance
 
-* Typed Pydantic models (`Observation`, `Action`)
-* `step()`, `reset()`, `state()` implemented
-* `openenv.yaml` included
-* Passed `openenv validate`
+- Typed Pydantic models (`Observation`, `Action`)
+- `step()`, `reset()`, `state()` implemented
+- `openenv.yaml` included
+- Passed `openenv validate`
 
 ---
 
 ## Future Work
 
-* More complex cloud scenarios (autoscaling, networking)
-* Dynamic workloads and stochastic behavior
-* Advanced anomaly detection signals
-* Integration with real cloud telemetry datasets
+- More complex cloud scenarios (autoscaling, networking)
+- Dynamic workloads and stochastic behavior
+- Advanced anomaly detection signals
+- Integration with real cloud telemetry datasets
 
 ---
