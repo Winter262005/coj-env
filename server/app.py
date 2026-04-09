@@ -29,9 +29,9 @@ def health():
 
 
 @app.post("/reset")
-def reset(req: ResetRequest = ResetRequest()):
+def reset(request: Optional[ResetRequest] = None):
     """Reset the env for the specified task — each task gets a distinct start state."""
-    obs = env.reset(task=req.task)
+    obs = env.reset(task=request.task)
     env._initial_snapshot = obs
     return obs
 
