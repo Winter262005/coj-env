@@ -239,7 +239,7 @@ class CloudEnv:
         if self._is_done():
             done = True
             efficiency     = (MAX_STEPS - self.steps) / MAX_STEPS
-            terminal_bonus = max(0.0, 1.0 - step_reward) * (0.5 + 0.5 * efficiency)
+            terminal_bonus = max(0.01, 0.99 - step_reward) * (0.5 + 0.5 * efficiency)
             info["reason"] = "all issues resolved"
         elif self.steps >= MAX_STEPS:
             done = True
