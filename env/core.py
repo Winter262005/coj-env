@@ -234,7 +234,7 @@ class CloudEnv:
 
         phi_after  = self._potential(self._state)
         step_reward += 0.99 * phi_after - phi_before
-        step_reward  = max(-1.0, min(1.0, step_reward))
+        step_reward  = max(0.01, min(0.99, step_reward))
 
         if self._is_done():
             done = True
