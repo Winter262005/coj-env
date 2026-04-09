@@ -370,8 +370,7 @@ class CloudEnv:
         if self._is_done():
             done = True
             efficiency = (MAX_STEPS - self.steps) / MAX_STEPS
-            terminal_bonus = 0.50 + 0.45 * efficiency
-            terminal_bonus = max(0.0, min(1.0, terminal_bonus))
+            terminal_bonus = round(0.20 + 0.25 * efficiency,4)
             terminal_bonus = _clamp01_open(terminal_bonus)
             info["reason"] = "all issues resolved"
         elif self.steps >= MAX_STEPS:
@@ -381,8 +380,5 @@ class CloudEnv:
         self._update_health()
         self._state.alerts = self._generate_alerts()
 
-        total = step_reward + terminal_bonus
-        total = max(0.0, min(1.0, total))
-        total = _clamp01_open(total)
-
+        total = max(0.05, min(0.95, round(step_reward + terminal_bonus, 4)))
         return self._state.model_dump(), total, done, info
