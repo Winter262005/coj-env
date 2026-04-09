@@ -234,12 +234,12 @@ class CloudEnv:
 
         phi_after  = self._potential(self._state)
         step_reward += 0.99 * phi_after - phi_before
-        step_reward  = max(0.01, min(0.99, step_reward))
+        step_reward  = max(0.01, min(0.95, step_reward))
 
         if self._is_done():
             done = True
             efficiency     = (MAX_STEPS - self.steps) / MAX_STEPS
-            terminal_bonus = max(0.01, 0.99 - step_reward) * (0.5 + 0.5 * efficiency)
+            terminal_bonus = round(0.50 + 0.45 * efficiency, 4)
             info["reason"] = "all issues resolved"
         elif self.steps >= MAX_STEPS:
             done = True
@@ -248,4 +248,7 @@ class CloudEnv:
         self._update_health()
         self._state.alerts = self._generate_alerts()
 
-        return self._state.model_dump(), round(step_reward + terminal_bonus, 4), done, info
+        total = round(step_reward + terminal_bonus, 4)
+        total = max(0.01, min(0.99, total))   # enforce strict (0,1)
+
+        return self._state.model_dump(), total, done, info
