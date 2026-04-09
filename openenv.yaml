@@ -26,13 +26,13 @@ tasks:
   - name: zombie_reaper
     description: Delete all unattached volumes older than 30 days
     difficulty: easy
-    reward_range: [0.01, 0.99]
+    reward_range: [0.0, 1.0]
     grader: env.tasks.zombie_reaper_grader
 
   - name: dev_shutdown
     description: Stop all low-CPU dev instances without affecting production
     difficulty: medium
-    reward_range: [0.01, 0.99]
+    reward_range: [0.0, 1.0]
     grader: env.tasks.dev_shutdown_grader
 
   - name: auditor
@@ -40,7 +40,7 @@ tasks:
       Simultaneously reduce cost, secure public databases,
       maintain production uptime, and avoid deleting attached volumes
     difficulty: hard
-    reward_range: [0.01, 0.99]
+    reward_range: [0.0, 1.0]
     grader: env.tasks.auditor_grader
 
 baseline:

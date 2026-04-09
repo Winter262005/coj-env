@@ -20,19 +20,100 @@ class ActionRequest(BaseModel):
 
 
 class ResetRequest(BaseModel):
-    task: str = "auditor"           # ← which task to set up the episode for
+    task: str = "auditor"
 
+
+# ── Required OpenEnv API Endpoints ───────────────────────────────────────────
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "env": "CloudEnv"}
+    # Must return {"status": "healthy"} — "ok" fails openenv validate
+    return {"status": "healthy"}
 
+
+@app.get("/metadata")
+def metadata():
+    # Required: name (str) and description (str)
+    return {
+        "name": "cloud-ops-janitor",
+        "description": (
+            "A reinforcement learning environment for optimizing cloud "
+            "infrastructure by removing unused resources, securing databases, "
+            "and preserving uptime."
+        ),
+        "version": "1.0.0",
+        "tasks": list(GRADERS.keys()),
+    }
+
+
+@app.get("/schema")
+def schema():
+    # Required: action (dict), observation (dict), state (dict)
+    return {
+        "action": {
+            "type": "object",
+            "properties": {
+                "action_type": {
+                    "type": "string",
+                    "enum": [
+                        "delete_volume",
+                        "stop_instance",
+                        "secure_database",
+                        "noop",
+                    ],
+                },
+                "target_id": {"type": "string", "nullable": True},
+            },
+            "required": ["action_type"],
+        },
+        "observation": {
+            "type": "object",
+            "properties": {
+                "instances": {"type": "array"},
+                "volumes": {"type": "array"},
+                "databases": {"type": "array"},
+                "cost": {"type": "number"},
+                "health": {"type": "number"},
+                "alerts": {"type": "array"},
+            },
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "instances": {"type": "array"},
+                "volumes": {"type": "array"},
+                "databases": {"type": "array"},
+                "cost": {"type": "number"},
+                "health": {"type": "number"},
+                "alerts": {"type": "array"},
+            },
+        },
+    }
+
+
+@app.post("/mcp")
+def mcp(payload: Optional[dict] = None):
+    # Required: JSON-RPC 2.0 response
+    request_id = (payload or {}).get("id", None)
+    method = (payload or {}).get("method", "")
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "result": {
+            "method": method,
+            "status": "ok",
+            "description": "Cloud-Ops Janitor MCP endpoint",
+        },
+    }
+
+
+# ── Core Environment Endpoints ────────────────────────────────────────────────
 
 @app.post("/reset")
 def reset(request: Optional[ResetRequest] = None):
-    task = request.task if request else "zombie_reaper"  # ← safe extraction
+    task = request.task if request else "zombie_reaper"
     env._initial_snapshot = None
-    state = env.reset(task=task)                         # ← use task, NOT request.task
+    state = env.reset(task=task)
     env._initial_snapshot = state
     return state
 
@@ -53,11 +134,13 @@ def grade(task_name: str):
     if task_name not in GRADERS:
         raise HTTPException(
             status_code=404,
-            detail=f"Unknown task '{task_name}'. Valid: {list(GRADERS)}"
+            detail=f"Unknown task '{task_name}'. Valid: {list(GRADERS)}",
         )
     initial = getattr(env, "_initial_snapshot", None)
     if initial is None:
-        raise HTTPException(status_code=400, detail="Call /reset before /grade")
+        raise HTTPException(
+            status_code=400, detail="Call /reset before /grade"
+        )
     score = GRADERS[task_name](initial, env.state())
     return {"task": task_name, "score": score}
 
@@ -69,8 +152,10 @@ def root():
 
 import uvicorn
 
+
 def main():
     uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+
 
 if __name__ == "__main__":
     main()
