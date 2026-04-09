@@ -30,10 +30,11 @@ def health():
 
 @app.post("/reset")
 def reset(request: Optional[ResetRequest] = None):
-    """Reset the env for the specified task — each task gets a distinct start state."""
-    obs = env.reset(task=request.task)
-    env._initial_snapshot = obs
-    return obs
+    task = request.task if request else "zombie_reaper"  # ← safe extraction
+    env._initial_snapshot = None
+    state = env.reset(task=task)                         # ← use task, NOT request.task
+    env._initial_snapshot = state
+    return state
 
 
 @app.post("/step")
