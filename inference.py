@@ -31,7 +31,7 @@ def log_step(step, action, reward, done, error):
     print(f"[STEP] step={step} action={action} reward={reward:.8f} done={str(done).lower()} error={error if error else 'null'}", flush=True)
 
 def log_end(success, steps, rewards, score):
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.8f}' for r in rewards)}" f"score={score:.8f}", flush=True)
+    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.8f}' for r in rewards)}" f" score={score:.8f}", flush=True)
 
 
 def get_action(state: dict, task: str) -> dict:
