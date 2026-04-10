@@ -1,3 +1,21 @@
+---
+title: Cloud-Ops Janitor (COJ-Env)
+emoji: 🧹
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+license: mit
+language: en
+tags:
+  - openenv
+  - reinforcement-learning
+  - simulation
+  - cloud-ops
+  - infrastructure
+  - devops
+short_description: OpenEnv environment that simulates cloud infra optimization
+---
 
 # Cloud-Ops Janitor - OpenEnv Environment
 
