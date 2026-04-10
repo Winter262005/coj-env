@@ -49,7 +49,7 @@ This environment models these real-world issues and provides a controlled settin
 
 ## Tasks & Evaluation
 
-Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.0` and `1.0`.
+Environment includes **three progressive tasks**, each with a deterministic grader returning a score between `0.05` and `0.95`.
 
 ---
 
@@ -141,7 +141,7 @@ instances=[
 ### 1. Clone repository
 
 ```bash
-git clone https://huggingface.co/spaces/Winter262005/coj-env
+git clone https://huggingface.co/spaces/SumDude247/coj-env
 cd coj-env
 ```
 
