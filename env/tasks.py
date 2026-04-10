@@ -10,7 +10,7 @@ def _clamp01_open(score: float) -> float:
     if s != s or s == float("inf") or s == float("-inf"):
         # NaN or infinities should be handled as worst case but still in (0,1)
         return 0.05
-    return 0.95 if s >= 0.95 else (0.05 if s <= 0.05 else s)
+    return 0.99 if s >= 0.99 else (0.01 if s <= 0.01 else s)
 
 
 def zombie_reaper_grader(initial: dict, final: dict) -> float:
