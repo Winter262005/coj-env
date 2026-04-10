@@ -86,7 +86,6 @@ A deterministic rule-based agent is provided as a baseline.
 [STEP]
 [END]
 
-
 ---
 
 ## Setup & Usage
