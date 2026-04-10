@@ -115,7 +115,7 @@ def reset(request: Optional[ResetRequest] = None):
     env._initial_snapshot = None
     state = env.reset(task=task)
     env._initial_snapshot = state
-    return state
+    return {"observation": state, "reward": None, "done": False}
 
 
 @app.post("/step")

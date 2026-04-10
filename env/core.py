@@ -10,7 +10,7 @@ def _clamp01_open(x: float) -> float:
     We use 0.01 and 0.99 so even if the platform rounds to 2 decimals,
     it stays strictly inside (0,1).
     """
-    return float(min(0.95, max(0.05, x)))
+    return float(min(0.99, max(0.01, x)))
 
 
 class CloudEnv:
