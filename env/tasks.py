@@ -1,3 +1,5 @@
+import math
+
 def _clamp01_open(score: float) -> float:
     """
     Enforce strict open interval (0.0, 1.0) — never exactly 0 or 1.
@@ -5,12 +7,14 @@ def _clamp01_open(score: float) -> float:
     We deliberately clamp to [0.01, 0.99] so that even if the platform
     rounds to 2 decimal places, the values remain strictly inside (0, 1).
     """
-    # First ensure it's a finite float
-    s = float(score)
-    if s != s or s == float("inf") or s == float("-inf"):
-        # NaN or infinities should be handled as worst case but still in (0,1)
+    try:
+        s = float(score)
+    except (TypeError, ValueError):
         return 0.05
-    return 0.99 if s >= 0.99 else (0.01 if s <= 0.01 else s)
+    if not math.isfinite(s):
+        return 0.05
+    # clamp to [0.01, 0.99] — strictly inside (0, 1)
+    return min(0.99, max(0.01, s))
 
 
 def zombie_reaper_grader(initial: dict, final: dict) -> float:

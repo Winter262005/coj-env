@@ -30,8 +30,8 @@ def log_start(task, env, model):
 def log_step(step, action, reward, done, error):
     print(f"[STEP] step={step} action={action} reward={reward:.8f} done={str(done).lower()} error={error if error else 'null'}", flush=True)
 
-def log_end(success, steps, rewards):
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.8f}' for r in rewards)}", flush=True)
+def log_end(success, steps, rewards, score):
+    print(f"[END] success={str(success).lower()} steps={steps} rewards={','.join(f'{r:.8f}' for r in rewards)}" f"score={score:.8f}", flush=True)
 
 
 def get_action(state: dict, task: str) -> dict:
@@ -106,6 +106,7 @@ def select_action(state: dict, task: str) -> dict:
 def run_task(task: str) -> None:
     log_start(task, BENCHMARK, MODEL_NAME)
     rewards, steps_taken, success = [], 0, False
+    score = 0.05
     try:
         # Pass task name so server sets the correct episode state
         state = requests.post(f"{ENV_BASE_URL}/reset", json={"task": task}, timeout=30).json()
@@ -121,10 +122,12 @@ def run_task(task: str) -> None:
             if done:
                 break
         success = sum(rewards) > 0
+        grade_resp = requests.get(f"{ENV_BASE_URL}/grade/{task}", timeout=30).json()
+        score = float(grade_resp.get("score", 0.05))
     except Exception as e:
         print(f"[DEBUG] task={task} error={e}", flush=True)
     finally:
-        log_end(success, steps_taken, rewards)
+        log_end(success, steps_taken, rewards, score)
 
 
 def main():
