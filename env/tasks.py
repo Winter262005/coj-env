@@ -1,48 +1,39 @@
 import math
 
 def _clamp01_open(score: float) -> float:
-    """
-    Enforce strict open interval (0.0, 1.0) — never exactly 0 or 1.
-
-    We deliberately clamp to [0.01, 0.99] so that even if the platform
-    rounds to 2 decimal places, the values remain strictly inside (0, 1).
-    """
     try:
         s = float(score)
     except (TypeError, ValueError):
         return 0.05
     if not math.isfinite(s):
         return 0.05
-    # clamp to [0.01, 0.99] — strictly inside (0, 1)
     return min(0.99, max(0.01, s))
 
 
 def zombie_reaper_grader(initial: dict, final: dict) -> float:
-    # Identify zombie volumes in the initial state
+    # Identify zombie EBS volumes (state="available" and age > 30)
     initial_zombies = [
         v for v in initial.get("volumes", [])
-        if (not v.get("attached")) and v.get("age", 0) > 30
+        if v.get("state") == "available" and v.get("age", 0) > 30
     ]
     total = len(initial_zombies)
 
-    # Integrity check – penalise deleting attached volumes
+    # Integrity check – penalise deleting in-use volumes
     initial_ids = {v["id"] for v in initial.get("volumes", [])}
     final_ids = {v["id"] for v in final.get("volumes", [])}
     deleted_ids = initial_ids - final_ids
-    was_attached = {
-        v["id"] for v in initial.get("volumes", []) if v.get("attached")
+    was_in_use = {
+        v["id"] for v in initial.get("volumes", []) if v.get("state") == "in-use"
     }
-    if deleted_ids & was_attached:
-        # worst-case score, but strictly > 0 after clamp
+    if deleted_ids & was_in_use:
         return _clamp01_open(0.0)
 
     if total == 0:
-        # nothing to clean up -> best score, but strictly < 1 after clamp
         return _clamp01_open(1.0)
 
     remaining = [
         v for v in final.get("volumes", [])
-        if (not v.get("attached")) and v.get("age", 0) > 30
+        if v.get("state") == "available" and v.get("age", 0) > 30
     ]
     deleted = total - len(remaining)
 
@@ -51,7 +42,7 @@ def zombie_reaper_grader(initial: dict, final: dict) -> float:
 
 
 def dev_shutdown_grader(initial: dict, final: dict) -> float:
-    # Integrity check – penalise stopping prod instances
+    # Integrity check – penalise stopping prod EC2 instances
     prod_stopped = any(
         i.get("tag") == "prod" and i.get("status") == "stopped"
         for i in final.get("instances", [])
@@ -59,12 +50,12 @@ def dev_shutdown_grader(initial: dict, final: dict) -> float:
     if prod_stopped:
         return _clamp01_open(0.0)
 
-    # Target dev instances: low CPU usage and running
+    # Target dev EC2 instances: low CPU utilization and running
     initial_targets = [
         i for i in initial.get("instances", [])
         if (
             i.get("tag") == "dev"
-            and i.get("cpu", 100) < 5
+            and i.get("cpu_utilization", 100) < 5
             and i.get("status") == "running"
         )
     ]
@@ -85,38 +76,27 @@ def dev_shutdown_grader(initial: dict, final: dict) -> float:
 
 
 def auditor_grader(initial: dict, final: dict) -> float:
-    """
-    Combined task: cost savings, security, efficiency, and integrity.
-    Returns a single score strictly in (0,1).
-    """
-
-    # ---- Cost score (weight 0.40) ----
     initial_cost = float(initial.get("cost", 0.0))
     final_cost = float(final.get("cost", 0.0))
 
     dev_targets = [
         i for i in initial.get("instances", [])
-        if i.get("tag") == "dev" and i.get("cpu", 100) < 5
+        if i.get("tag") == "dev" and i.get("cpu_utilization", 100) < 5
     ]
     zombies = [
         v for v in initial.get("volumes", [])
-        if (not v.get("attached")) and v.get("age", 0) > 30
+        if v.get("state") == "available" and v.get("age", 0) > 30
     ]
-    max_savings = len(dev_targets) * 10 + len(zombies) * 5
+    max_savings = len(dev_targets) * 20 + len(zombies) * 30  # Adjusted weighting for realistic costs
     if max_savings <= 0:
-        max_savings = 20.0
+        max_savings = 50.0
 
     cost_raw = (initial_cost - final_cost) / max_savings
-    # allow over/under and then clamp into (0,1)
     cost_score = _clamp01_open(cost_raw)
 
-    # ---- Security score (weight 0.35) ----
-    initial_public = [
-        db for db in initial.get("databases", []) if db.get("public")
-    ]
-    final_public = [
-        db for db in final.get("databases", []) if db.get("public")
-    ]
+    initial_public = [db for db in initial.get("databases", []) if db.get("publicly_accessible")]
+    final_public = [db for db in final.get("databases", []) if db.get("publicly_accessible")]
+    
     if len(initial_public) == 0:
         sec_raw = 1.0
     else:
@@ -124,19 +104,16 @@ def auditor_grader(initial: dict, final: dict) -> float:
         sec_raw = secured / len(initial_public)
     security_score = _clamp01_open(sec_raw)
 
-    # ---- Efficiency score (weight 0.15) ----
     final_alerts = len(final.get("alerts", []))
     initial_alerts = len(initial.get("alerts", []))
     if initial_alerts > 0 and final_alerts == 0:
         eff_raw = 1.0
     elif initial_alerts <= 0:
-        # nothing to reduce -> treat as neutral mid-score
         eff_raw = 0.5
     else:
         eff_raw = (initial_alerts - final_alerts) / max(1, initial_alerts)
     efficiency_score = _clamp01_open(eff_raw)
 
-    # ---- Integrity score (weight 0.10) ----
     prod_down = any(
         i.get("tag") == "prod" and i.get("status") == "stopped"
         for i in final.get("instances", [])
@@ -144,15 +121,14 @@ def auditor_grader(initial: dict, final: dict) -> float:
     initial_ids = {v["id"] for v in initial.get("volumes", [])}
     final_ids = {v["id"] for v in final.get("volumes", [])}
     deleted_ids = initial_ids - final_ids
-    was_attached = {
-        v["id"] for v in initial.get("volumes", []) if v.get("attached")
+    was_in_use = {
+        v["id"] for v in initial.get("volumes", []) if v.get("state") == "in-use"
     }
-    integrity_ok = (not prod_down) and not (deleted_ids & was_attached)
+    integrity_ok = (not prod_down) and not (deleted_ids & was_in_use)
 
     int_raw = 1.0 if integrity_ok else 0.0
     integrity_score = _clamp01_open(int_raw)
 
-    # ---- Weighted aggregate ----
     raw = (
         0.40 * cost_score +
         0.35 * security_score +
